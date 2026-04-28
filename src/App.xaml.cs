@@ -79,11 +79,16 @@ namespace CMPADotNetTest
                 return;
             }
 
-            var mainWindow = new MainWindow(dialog.Config);
+            RunSession(dialog.Config);
+        }
+
+        private void RunSession(StartupConfig config)
+        {
+            var mainWindow = new MainWindow(config);
             mainWindow.ShowDialog();
 
             if (mainWindow.RestartRequested)
-                RunSession(dialog.Config.DurationSeconds);
+                RunSession(config);
             else
                 Shutdown();
         }

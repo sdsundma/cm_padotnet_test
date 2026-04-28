@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:CMPADotNetTest.Controls"
         Title="CM ProtectApp .Net Testing"
-        MinWidth="900" MinHeight="600"
-        Width="1200" Height="750"
+        MinWidth="900" MinHeight="700"
+        Width="1200" Height="860"
         WindowStartupLocation="CenterScreen"
         Background="#1A1A2E"
         Foreground="#E0E0E0"
@@ -45,12 +45,26 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12"/>
         </Style>
+        <Style x:Key="PropKeyLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#78909C"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,1,8,1"/>
+        </Style>
+        <Style x:Key="PropValLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,1,0,1"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="140"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -70,7 +84,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Title & key info -->
+                <!-- Title, key, user, key-caching info -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="CM ProtectApp" FontSize="18" FontWeight="Bold"
                                Foreground="#00BCD4" VerticalAlignment="Center"/>
@@ -84,6 +98,10 @@
                     <TextBlock Text="User: " Style="{StaticResource DimText}" VerticalAlignment="Center"/>
                     <TextBlock x:Name="TxtUserDisplay" Text="--" Foreground="#90CAF9"
                                FontSize="11" VerticalAlignment="Center"/>
+                    <Rectangle Width="1" Height="20" Fill="#2A3F6F" Margin="16,0"/>
+                    <TextBlock Text="Key Caching: " Style="{StaticResource DimText}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtKeyCaching" Text="None" Foreground="#00BCD4"
+                               FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Timer display -->
@@ -114,13 +132,13 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Menu buttons: Restart | Exit -->
+                <!-- Restart | Exit -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="BtnRestart" Content="Restart"
                             Style="{StaticResource MenuButton}"
                             Background="#1565C0" Margin="0,0,6,0"
                             Click="BtnRestart_Click"/>
-                    <Button x:Name="BtnMenuExit" Content="Exit"
+                    <Button x:Name="BtnMenuExit" Content="Abort"
                             Style="{StaticResource MenuButton}"
                             Background="#B71C1C"
                             Click="BtnMenuExit_Click"/>
@@ -128,7 +146,6 @@
             </Grid>
         </Border>
 
-        <!-- Run-complete banner (hidden until done) -->
         <!-- Progress bar strip just below header -->
         <Border Grid.Row="0" VerticalAlignment="Bottom" Height="3">
             <ProgressBar x:Name="OverallProgress" Minimum="0" Maximum="100" Value="0"
@@ -173,8 +190,51 @@
                 AccentColor="#7B1FA2"/>
         </Grid>
 
+        <!-- Provider properties panel -->
+        <Border Grid.Row="2" BorderThickness="0,1,0,1" BorderBrush="#0F3460"
+                Background="#0A0F1A" Padding="8,6">
+            <Grid x:Name="PropsGrid">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Properties File section -->
+                <Border Grid.Column="0" Margin="0,0,4,0"
+                        BorderBrush="#1E3A5F" BorderThickness="1"
+                        Background="#0D1B2A" Padding="6,4">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Properties File"
+                                   Foreground="#546E7A" FontSize="9" FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="FilePropsPanel"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+
+                <!-- Runtime Overrides section -->
+                <Border Grid.Column="1" Margin="4,0,0,0"
+                        BorderBrush="#1E3A5F" BorderThickness="1"
+                        Background="#0D1B2A" Padding="6,4">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="Runtime Overrides"
+                                   Foreground="#546E7A" FontSize="9" FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="RuntimeOverridesPanel"/>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Border>
+
         <!-- Bottom bar -->
-        <Border Grid.Row="2" Padding="12,8" BorderThickness="0,1,0,0" BorderBrush="#0F3460"
+        <Border Grid.Row="3" Padding="12,8" BorderThickness="0,1,0,0" BorderBrush="#0F3460"
                 Background="#0A0F1A">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -182,7 +242,6 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Run-complete notice -->
                 <StackPanel x:Name="RunCompletePanel" Orientation="Horizontal"
                             VerticalAlignment="Center" Visibility="Collapsed">
                     <Ellipse Width="10" Height="10" Fill="#2196F3"

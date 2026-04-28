@@ -11,7 +11,6 @@ namespace CMPADotNetTest.Services
     {
         private readonly StartupConfig _config;
         private readonly SessionPanelViewModel _vm;
-        private readonly Random _rng = new Random();
 
         public DynamicSessionTester(StartupConfig config, SessionPanelViewModel vm)
         {
@@ -25,23 +24,16 @@ namespace CMPADotNetTest.Services
 
             while (!ct.IsCancellationRequested)
             {
-                int delayMs = _rng.Next(100, 5001);
-                bool cancelled = false;
-                try { await Task.Delay(delayMs, ct); }
-                catch (OperationCanceledException) { cancelled = true; }
-                if (cancelled) break;
-
-                if (ct.IsCancellationRequested) break;
-
                 // Open session
                 NAESession session = null;
+                CryptoContext ctx = null;
                 string openError = null;
                 long openMs = 0;
                 var swOpen = Stopwatch.StartNew();
                 try
                 {
                     session = ProtectAppService.OpenSession(_config);
-                    ProtectAppService.PrimeSession(session, _config.KeyName);
+                    ctx = ProtectAppService.PrimeSession(session, _config.KeyName);
                     swOpen.Stop();
                     openMs = swOpen.ElapsedMilliseconds;
                 }
@@ -56,6 +48,12 @@ namespace CMPADotNetTest.Services
                     _vm.RecordError(_vm.SessionOpenStats);
                     _vm.SetStatus(SessionStatus.Error, "Session open failed: " + openError);
                     _vm.AddLog(string.Format("[{0}] ERROR opening session: {1} — retrying next cycle", Ts(), openError));
+
+                    // Brief pause before retry
+                    bool cancelled = false;
+                    try { await Task.Delay(1000, ct); }
+                    catch (OperationCanceledException) { cancelled = true; }
+                    if (cancelled) break;
                     continue;
                 }
 
@@ -71,7 +69,7 @@ namespace CMPADotNetTest.Services
                     var swEnc = Stopwatch.StartNew();
                     try
                     {
-                        encrypted = ProtectAppService.Encrypt(session, _config.KeyName, _config.StaticTestValue);
+                        encrypted = ProtectAppService.Encrypt(ctx.Encryptor, _config.StaticTestValue);
                         swEnc.Stop();
                         encMs = swEnc.ElapsedMilliseconds;
                     }
@@ -90,13 +88,12 @@ namespace CMPADotNetTest.Services
                     _vm.UpdateStats(_vm.EncryptStats, encMs);
 
                     // Decrypt
-                    string decrypted = null;
                     string decError = null;
                     long decMs = 0;
                     var swDec = Stopwatch.StartNew();
                     try
                     {
-                        decrypted = ProtectAppService.Decrypt(session, _config.KeyName, encrypted);
+                        ProtectAppService.Decrypt(ctx.Decryptor, encrypted);
                         swDec.Stop();
                         decMs = swDec.ElapsedMilliseconds;
                     }
@@ -114,30 +111,38 @@ namespace CMPADotNetTest.Services
                     }
                     _vm.UpdateStats(_vm.DecryptStats, decMs);
 
-                    _vm.IncrementIteration();
-                    _vm.AddLog(string.Format("[{0}] #{1}  Open={2}ms  Enc={3}ms  Dec={4}ms",
-                        Ts(), _vm.Iteration, openMs, encMs, decMs));
-                    _vm.AddLog(string.Format("         ENC: {0}", Truncate(encrypted, 48)));
-                    _vm.AddLog(string.Format("         DEC: {0}", decrypted));
+                    int iter = _vm.IncrementIteration();
+
+                    if (_config.LoopDelayMs >= 1000 || iter % 50 == 0)
+                    {
+                        _vm.AddLog(string.Format("[{0}] iter {1} | open {2} ms | enc {3} ms | dec {4} ms",
+                            Ts(), iter, openMs, encMs, decMs));
+                    }
                 }
                 finally
                 {
+                    ctx?.Dispose();
                     ProtectAppService.CloseSession(session);
-                    _vm.SetStatus(SessionStatus.Running, "Session closed — waiting next cycle");
+                    _vm.SetStatus(SessionStatus.Running, "Session closed — next cycle");
+                }
+
+                // Configurable loop delay (None = run as fast as possible)
+                if (_config.LoopDelayMs > 0)
+                {
+                    bool cancelled = false;
+                    try { await Task.Delay(_config.LoopDelayMs, ct); }
+                    catch (OperationCanceledException) { cancelled = true; }
+                    if (cancelled) break;
                 }
             }
 
             _vm.SetStatus(SessionStatus.Completed, "Dynamic session loop complete");
+            _vm.AddLog(string.Format("[{0}] Test stopped.", Ts()));
         }
 
         private static string Ts()
         {
-            return DateTime.Now.ToString("HH:mm:ss.fff");
-        }
-
-        private static string Truncate(string s, int max)
-        {
-            return s.Length > max ? s.Substring(0, max) + "..." : s;
+            return DateTime.Now.ToString("HH:mm:ss");
         }
     }
 }

@@ -15,6 +15,10 @@ statistics and a scrolling operation log for each session type.
 - [Configuration](#configuration)
 - [Running](#running)
 - [Usage](#usage)
+  - [Test Isolation](#test-isolation)
+  - [Key Caching](#key-caching)
+  - [Loop Delay](#loop-delay)
+  - [Provider Property Overrides](#provider-property-overrides)
 
 ---
 
@@ -68,6 +72,7 @@ cm_padotnet_test/
 │   ├── App.xaml / App.xaml.cs
 │   ├── MainWindow.xaml / .cs
 │   ├── StartupDialog.xaml / .cs
+│   ├── PropertiesOverrideDialog.xaml / .cs   # Runtime property override dialog
 │   ├── Controls/
 │   │   └── SessionPanel.xaml / .cs   # Reusable per-session UI panel
 │   ├── Models/
@@ -164,7 +169,8 @@ runtime in the Configuration dialog.
 | `DefaultUsername` | NAE user pre-filled in the dialog |
 | `DefaultPassword` | NAE password pre-filled in the dialog |
 | `DefaultKeyName` | Key name pre-filled in the dialog |
-| `DefaultDuration` | Test run duration in seconds (default `1800`) |
+| `DefaultDuration` | Test run duration in seconds (default `60`) |
+| `DefaultCachePassphrase` | Passphrase pre-filled for disk key-cache encryption (default `asdf1234`; change before deployment) |
 
 The default `PropertiesFilePath` points to the standard ProtectApp installation
 directory:
@@ -186,7 +192,10 @@ directory:
    - **Username / Password** — NAE credentials
    - **Key Name** — name of the symmetric key to use for encrypt/decrypt
    - **Duration (sec)** — how long to run the test
-   - **Test Isolation** — which session type(s) to run (see [Usage](#usage))
+   - **Test Isolation** — which session type(s) to run (see [Test Isolation](#test-isolation))
+   - **Key Caching** — key caching strategy (see [Key Caching](#key-caching))
+   - **Loop Delay** — pause inserted between encrypt/decrypt iterations (see [Loop Delay](#loop-delay))
+   - **Customize...** — optionally override provider connection properties at runtime (see [Provider Property Overrides](#provider-property-overrides))
 5. Click **Start Testing**.
 
 ---
@@ -223,3 +232,86 @@ session type is active:
 
 Isolating a single session type simplifies log analysis when comparing session
 strategies or diagnosing issues specific to one mode.
+
+### Key Caching
+
+Selects how the ProtectApp provider caches symmetric keys between operations.
+Caching trades memory or disk usage for reduced round-trips to the NAE server,
+which lowers encrypt/decrypt latency once the cache is warm.
+
+| Selection | Effect |
+|---|---|
+| **None** (default) | No key caching. Every operation contacts the NAE server. Highest network dependency; provides the clearest view of raw round-trip latency. |
+| **Memory** | Keys are cached in process memory (`Symmetric_Key_Cache_Enabled = tcp_ok`). Cached keys survive individual operations for the life of the session, eliminating per-operation key-fetch round-trips. The cache is lost when the session closes or the application exits. |
+| **Disk** | All memory-cache behaviour plus disk persistence (`Persistent_Cache_Enabled = yes`). The cache survives session close and application restart. The cache file is encrypted using the **Cache Passphrase** entered in the Configuration dialog. Requires a non-empty Cache Passphrase. |
+
+**Cache Passphrase** is used only when **Key Caching** is **Disk**.  It is
+pre-populated from `DefaultCachePassphrase` in `App.config`; the default value
+(`asdf1234`) should be replaced with a site-specific passphrase before
+deployment.
+
+When a caching mode is active, the NAE properties it controls
+(`Symmetric_Key_Cache_Enabled`, `Persistent_Cache_Enabled`) appear locked in
+the Provider Property Overrides dialog and cannot be manually overridden.
+
+---
+
+### Loop Delay
+
+Inserts a fixed pause after each encrypt/decrypt pair, allowing controlled
+throughput testing and long-running soak tests without saturating the server.
+
+| Selection | Pause |
+|---|---|
+| **None** (default) | No pause — iterations run as fast as possible |
+| **1/10 sec** | 100 ms after each encrypt/decrypt pair |
+| **1 sec** | 1 000 ms after each encrypt/decrypt pair |
+| **5 sec** | 5 000 ms after each encrypt/decrypt pair |
+
+**Log verbosity** scales automatically: when the loop delay is 1 second or
+longer, every iteration is written to the operation log.  At shorter delays,
+only every 50th iteration is logged to keep the display readable at high
+throughput.
+
+---
+
+### Provider Property Overrides
+
+Clicking **Customize...** in the Configuration dialog opens the Provider
+Property Overrides panel.  This lets you change selected NAE connection
+properties for the duration of a test run without editing
+`ProtectAppForDotNet.properties` on disk.
+
+**How overrides are applied:**
+
+1. The panel reads the current `ProtectAppForDotNet.properties` file and
+   displays each recognized property's current on-disk value.
+2. An editable **Override** column accepts replacement values for any unlocked
+   property.
+3. On **Start Testing**, the overrides are merged with the original file and
+   written to a temporary copy at:
+   ```
+   %TEMP%\ProtectAppForDotNet_overrides.properties
+   ```
+   The NAE provider is initialised from this merged file.  The original
+   `ProtectAppForDotNet.properties` is never modified.
+
+**Overridable properties:**
+
+| Property | Description |
+|---|---|
+| `NAE_IP` | Primary NAE server IP address |
+| `NAE_IP.1` – `NAE_IP.9` | Additional addresses for load-balanced / multi-tier configurations |
+| `NAE_Port` | NAE server TCP port |
+| `Protocol` | Transport protocol (`tcp`, `ssl`, etc.) |
+| `Use_Persistent_Connections` | Persistent connection pool setting |
+| `Connection_Timeout` | Connection establishment timeout |
+| `Connection_Read_Timeout` | Read timeout for established connections |
+| `Connection_Retry_Interval` | Delay between connection retry attempts |
+| `Symmetric_Key_Cache_Enabled` | Key memory-cache setting (locked when Key Caching ≠ None) |
+| `Persistent_Cache_Enabled` | Disk persistence for the key cache (locked when Key Caching = Disk) |
+| `Log_File` | Path for the ProtectApp provider log |
+
+Properties that are managed by the **Key Caching** selection are displayed in
+italics with a cyan highlight and cannot be manually overridden — their values
+are set automatically based on the chosen caching mode.

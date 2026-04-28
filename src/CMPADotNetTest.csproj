@@ -70,6 +70,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="PropertiesOverrideDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
   </ItemGroup>
 
   <ItemGroup>
@@ -87,6 +91,10 @@
     </Compile>
     <Compile Include="Controls\SessionPanel.xaml.cs">
       <DependentUpon>Controls\SessionPanel.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="PropertiesOverrideDialog.xaml.cs">
+      <DependentUpon>PropertiesOverrideDialog.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Models\StartupConfig.cs" />

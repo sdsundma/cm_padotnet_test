@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using CMPADotNetTest.Models;
@@ -48,8 +50,11 @@ namespace CMPADotNetTest
 
             TxtKeyDisplay.Text  = config.KeyName;
             TxtUserDisplay.Text = config.Username;
+            TxtKeyCaching.Text  = config.KeyCaching.ToString();
 
             _duration = TimeSpan.FromSeconds(config.DurationSeconds);
+
+            PopulatePropertiesPanel(config);
         }
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
@@ -96,7 +101,6 @@ namespace CMPADotNetTest
             if (_config.TestIsolation != TestIsolation.Persistent)
                 tasks.Add(Task.Run(new Func<Task>(() => dynamicTester.RunAsync(cts.Token))));
 
-            // Cancel after duration
             Task.Delay(_duration).ContinueWith(t => { cts.Cancel(); });
 
             try { await Task.WhenAll(tasks); }
@@ -121,6 +125,13 @@ namespace CMPADotNetTest
 
             double pct = Math.Min(100.0, elapsed.TotalSeconds / _duration.TotalSeconds * 100.0);
             OverallProgress.Value = pct;
+
+            // Pull accumulated stats and log entries from test threads to the UI
+            // at a steady 4 Hz rate — prevents Dispatcher flooding on tight loops.
+            if (_config.TestIsolation != TestIsolation.Dynamic)
+                _persistentVm.RefreshDisplay();
+            if (_config.TestIsolation != TestIsolation.Persistent)
+                _dynamicVm.RefreshDisplay();
         }
 
         private void OnRunComplete()
@@ -163,7 +174,93 @@ namespace CMPADotNetTest
             Dispatcher.BeginInvoke(new Action(() => TxtStatusBar.Text = message));
         }
 
-        // Top-bar Exit button — exits immediately with no confirmation
+        // ── Provider properties panel ─────────────────────────────────────────
+
+        private static readonly string[] PropKeys = {
+            "NAE_IP", "NAE_Port", "Protocol", "Use_Persistent_Connections",
+            "Connection_Timeout", "Connection_Read_Timeout", "Connection_Retry_Interval",
+            "Symmetric_Key_Cache_Enabled", "Persistent_Cache_Enabled", "Log_File"
+        };
+
+        private void PopulatePropertiesPanel(StartupConfig config)
+        {
+            var fileProps      = PropertiesOverrideDialog.LoadPropertiesFile(config.PropertiesFilePath);
+            var runtimeOverrides = ProtectAppService.GetEffectiveOverrides(config);
+
+            FilePropsPanel.Children.Clear();
+            RuntimeOverridesPanel.Children.Clear();
+
+            // Properties File: show keys NOT in runtime overrides
+            // NAE_IP base + tiers
+            AddFilePropIfNotOverridden("NAE_IP", fileProps, runtimeOverrides, FilePropsPanel);
+            for (int i = 1; i <= 9; i++)
+            {
+                string ipKey = "NAE_IP." + i;
+                AddFilePropIfNotOverridden(ipKey, fileProps, runtimeOverrides, FilePropsPanel);
+            }
+            foreach (string key in PropKeys)
+            {
+                if (key == "NAE_IP") continue;
+                AddFilePropIfNotOverridden(key, fileProps, runtimeOverrides, FilePropsPanel);
+            }
+
+            // Runtime Overrides: show effective overrides (key caching + manual)
+            foreach (var kv in runtimeOverrides)
+                AddPropRow(kv.Key, kv.Value, Color.FromRgb(0x00, 0xBC, 0xD4), RuntimeOverridesPanel);
+
+            if (runtimeOverrides.Count == 0)
+            {
+                var none = new TextBlock
+                {
+                    Text = "(none)",
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x54, 0x6E, 0x7A)),
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 11,
+                    Margin = new Thickness(0, 1, 0, 1)
+                };
+                RuntimeOverridesPanel.Children.Add(none);
+            }
+        }
+
+        private static void AddFilePropIfNotOverridden(
+            string key,
+            Dictionary<string, string> fileProps,
+            Dictionary<string, string> runtimeOverrides,
+            StackPanel target)
+        {
+            if (runtimeOverrides.ContainsKey(key)) return;
+            string val;
+            if (!fileProps.TryGetValue(key, out val)) return;
+            AddPropRow(key, val, Color.FromRgb(0xE0, 0xE0, 0xE0), target);
+        }
+
+        private static void AddPropRow(string key, string value, Color valueColor, StackPanel target)
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+
+            row.Children.Add(new TextBlock
+            {
+                Text = key + ":",
+                Foreground = new SolidColorBrush(Color.FromRgb(0x78, 0x90, 0x9C)),
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 11,
+                Margin = new Thickness(0, 1, 6, 1)
+            });
+            row.Children.Add(new TextBlock
+            {
+                Text = value,
+                Foreground = new SolidColorBrush(valueColor),
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 11,
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 1, 0, 1)
+            });
+
+            target.Children.Add(row);
+        }
+
+        // ── Button handlers ──────────────────────────────────────────────────
+
         private void BtnMenuExit_Click(object sender, RoutedEventArgs e)
         {
             _exitConfirmed = true;
@@ -172,7 +269,6 @@ namespace CMPADotNetTest
             Application.Current.Shutdown();
         }
 
-        // Top-bar Restart button — cancels tests and returns to the startup dialog
         private void BtnRestart_Click(object sender, RoutedEventArgs e)
         {
             RestartRequested = true;
@@ -182,7 +278,6 @@ namespace CMPADotNetTest
             Close();
         }
 
-        // Bottom-bar Exit button — existing behavior (confirms if tests still running)
         private void BtnExit_Click(object sender, RoutedEventArgs e)
         {
             if (!_runComplete)

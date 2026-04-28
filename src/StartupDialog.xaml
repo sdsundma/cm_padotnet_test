@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CM ProtectApp .Net Testing — Configuration"
-        Width="500" Height="420" MinHeight="380"
+        Width="500" Height="560" MinHeight="520"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         Background="#1A1A2E"
@@ -111,6 +111,15 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        <Style x:Key="CustomizeButton" TargetType="Button">
+            <Setter Property="Background" Value="#1565C0"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,4"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
     </Window.Resources>
 
     <Grid Margin="24">
@@ -132,10 +141,13 @@
         <!-- Form -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="150"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" MinHeight="40"/>
+                <RowDefinition Height="Auto" MinHeight="40"/>
+                <RowDefinition Height="Auto" MinHeight="40"/>
                 <RowDefinition Height="Auto" MinHeight="40"/>
                 <RowDefinition Height="Auto" MinHeight="40"/>
                 <RowDefinition Height="Auto" MinHeight="40"/>
@@ -163,7 +175,28 @@
                 <ComboBoxItem Content="Dynamic only"/>
             </ComboBox>
 
-            <TextBlock Grid.Row="5" Grid.Column="1" x:Name="TxtError"
+            <Label Grid.Row="5" Grid.Column="0" Content="Key Caching:"/>
+            <ComboBox Grid.Row="5" Grid.Column="1" x:Name="CmbKeyCaching" VerticalAlignment="Center">
+                <ComboBoxItem Content="None" IsSelected="True"/>
+                <ComboBoxItem Content="Memory"/>
+                <ComboBoxItem Content="Disk"/>
+            </ComboBox>
+
+            <Label Grid.Row="6" Grid.Column="0" Content="Loop Delay:"/>
+            <ComboBox Grid.Row="6" Grid.Column="1" x:Name="CmbLoopDelay" VerticalAlignment="Center">
+                <ComboBoxItem Content="None" IsSelected="True"/>
+                <ComboBoxItem Content="1/10 sec"/>
+                <ComboBoxItem Content="1 sec"/>
+                <ComboBoxItem Content="5 sec"/>
+            </ComboBox>
+
+            <Label Grid.Row="7" Grid.Column="0" Content="Provider Properties:"/>
+            <Button Grid.Row="7" Grid.Column="1" x:Name="BtnCustomize"
+                    Content="Customize..." Style="{StaticResource CustomizeButton}"
+                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Click="BtnCustomize_Click"/>
+
+            <TextBlock Grid.Row="8" Grid.Column="1" x:Name="TxtError"
                        Foreground="#F44336" FontSize="11"
                        Margin="0,4,0,0" TextWrapping="Wrap"
                        Visibility="Collapsed"/>

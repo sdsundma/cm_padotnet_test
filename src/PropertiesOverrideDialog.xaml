@@ -1,0 +1,80 @@
+<Window x:Class="CMPADotNetTest.PropertiesOverrideDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ProtectApp Provider Property Overrides"
+        Width="700" Height="500" MinHeight="320"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#1A1A2E"
+        Foreground="#E0E0E0">
+
+    <Window.Resources>
+        <Style x:Key="ColHeader" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#0F3460"/>
+            <Setter Property="Foreground" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="20,6"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- key-caching legend (collapsed when None) -->
+            <RowDefinition Height="Auto"/>  <!-- column headers -->
+            <RowDefinition Height="*"/>     <!-- scrollable property rows -->
+            <RowDefinition Height="Auto"/>  <!-- buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- Key-caching legend -->
+        <TextBlock x:Name="TxtLegend" Grid.Row="0"
+                   Foreground="#00BCD4" FontSize="10" FontStyle="Italic"
+                   Margin="6,0,6,6" TextWrapping="Wrap"
+                   Visibility="Collapsed"
+                   Text="Italic blue values are controlled by the Key Caching selection and cannot be overridden here."/>
+
+        <!-- Column headers -->
+        <Border Grid.Row="1" Background="#0F3460"
+                BorderBrush="#1E3A5F" BorderThickness="1,1,1,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="210"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Property"       Style="{StaticResource ColHeader}"/>
+                <TextBlock Grid.Column="1" Text="File Value"     Style="{StaticResource ColHeader}"/>
+                <TextBlock Grid.Column="2" Text="Override Value" Style="{StaticResource ColHeader}"/>
+            </Grid>
+        </Border>
+
+        <!-- Scrollable rows (populated in code-behind) -->
+        <Border Grid.Row="2" BorderBrush="#1E3A5F" BorderThickness="1">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Background="#16213E">
+                <StackPanel x:Name="RowsPanel"/>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,8,0,0">
+            <Button Content="   OK   " Style="{StaticResource ActionButton}"
+                    Background="#00838F" Margin="0,0,8,0"
+                    Click="BtnOK_Click"/>
+            <Button Content=" Cancel " Style="{StaticResource ActionButton}"
+                    Background="#37474F"
+                    Click="BtnCancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
